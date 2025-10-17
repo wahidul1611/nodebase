@@ -1,19 +1,50 @@
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { inngest } from "./client";
+import { generateText } from "ai";
+import { createOpenAI } from "@ai-sdk/openai"
+import { createAnthropic } from "@ai-sdk/anthropic"
 
-export const helloWorld = inngest.createFunction(
-  { id: "hello-world" },
-  { event: "test/hello.world" },
-  async ({ event, step }) => {
-    // Fetching the video
-    await step.sleep("fetching", "5s");
+const google = createGoogleGenerativeAI();
+const openai = createOpenAI()
+const anthropic = createAnthropic()
 
-    //Transcribing
-    await step.sleep("trancribing", "5s")
+export const execute = inngest.createFunction(
+    { id: "execute-ai" },
+    { event: "execute/ai" },
+    async ({ event, step }) => {
+        const { steps : geminiStaps } = await step.ai.wrap(
+            "gemini-generate-text", 
+            generateText, 
+            {
+                model: google("gemini-2.5-flash"),
+                system: "You are a helpful assistant.",
+                prompt: "What is 2 + 2",
+            }
+        );
 
-    // Sending transcription to AI
-    await step.sleep("sending-to-ai", "5s")
+        const { steps: openaiSteps } = await step.ai.wrap(
+            "openai-generate-text", 
+            generateText, 
+            {
+                model: openai("gpt-4"),
+                system: "You are a helpful assistant.",
+                prompt: "What is 2 + 2",
+            }
+        );
 
-    await step.sleep("wait-a-moment", "10s");
-    return { message: `Hello ${event.data.email}!` };
-  },
+        const { steps: anthropicSteps } = await step.ai.wrap(
+            "anthropic-generate-text", 
+            generateText, 
+            {
+                model: anthropic("claude-sonnet-4-5"),
+                system: "You are a helpful assistant.",
+                prompt: "What is 2 + 2",
+            }
+        );
+        return {
+            geminiStaps,
+            openaiSteps,
+            anthropicSteps
+        }
+    }
 );
